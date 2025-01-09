@@ -1,6 +1,10 @@
 package stracescope_code;
 
 import javafx.application.*;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.stage.*;
 import javafx.scene.*;
 import javafx.scene.layout.*;
@@ -9,11 +13,17 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
 import java.util.*;
-
 import javafx.concurrent.*;
-
 import javafx.beans.value.*;
 
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.stage.Stage;
 
 class P_move
 {
@@ -51,18 +61,15 @@ class G_task extends Task<P_move>
             updateValue(p_move);
 
             System.out.println("i=" + i);
-
             i++;
 
             System.out.println("x = " +  p_move.x + "y = " +  p_move.y);
-
 
             if(i == 10)
             {
                 updateValue(null);
                 break;
             }
-
 
             try { Thread.sleep(1000);  System.out.println("sleep method");    }
             catch (InterruptedException ex)
@@ -71,7 +78,6 @@ class G_task extends Task<P_move>
                 break;
             }
         }
-
 
         return p_move;
     }
@@ -90,74 +96,247 @@ class Game_service extends Service<P_move>
     protected Task createTask()
     {
         t = new G_task();
-
         return t;
-
     }
 
 }
 
-
-
-
-
 public class JavaFXApp extends Application implements ChangeListener<P_move>
 {
-
-    Stage stage;
-
     Game_service g_s;
+    GraphicsContext gc;
+    Canvas canvas;
 
     public static void main(String[] args) {
         launch(args);
     }
 
+    // Tworzenie HBox z labelem do slidera + sliderem
+    private HBox createLabeledSlider(String label) {
+        Label lbl = new Label(label);
+        Slider slider = new Slider();
+        slider.setMin(0);
+        slider.setMax(100);
+        slider.setValue(50);
+        HBox box = new HBox(lbl, slider);
+        box.setSpacing(10);
+        box.setAlignment(Pos.CENTER_LEFT);
+        return box;
+    }
+
     @Override
     public void start(Stage primaryStage) {
-        primaryStage.setTitle("JavaFX App");
-
-        stage = primaryStage;
-
+        //=====================MENU BAR=======================
         Menu menu1 = new Menu("File");
-
         MenuItem menuItem1 = new MenuItem("Item 1");
-
         MenuItem menuItem2 = new MenuItem("Exit");
-
         menuItem2.setOnAction(e -> {
             System.out.println("Exit Selected");
-
             exit_dialog();
-
         });
 
         menu1.getItems().add(menuItem1);
         menu1.getItems().add(menuItem2);
 
-
-        MenuBar menuBar = new MenuBar();
-
+        MenuBar menuBar = new MenuBar(); //utworzenie menu bar z menu
         menuBar.getMenus().add(menu1);
-
-        VBox vBox = new VBox(menuBar);
-
-        Scene scene = new Scene(vBox, 960, 600);
-
-        primaryStage.setScene(scene);
 
         primaryStage.setOnCloseRequest(e -> {
             e.consume();
             exit_dialog();
         });
 
-        g_s = new Game_service();
 
-        g_s.valueProperty().addListener(this::changed);
 
-        g_s.start();
+/*
+        //---------BUTTON ONCLICKED----------
 
+        // Push buttons
+        // create a button
+        Button b = new Button("button");
+        EventHandler<ActionEvent> event = new EventHandler<ActionEvent>() {
+            public void handle(ActionEvent e)
+            {
+                b.setText("_Click");
+            }
+        };
+
+        b.setOnAction(event);
+        // add button
+        sub_root.getChildren().add(b);
+*/
+
+        //==========================NAKŁADANIE ELEMENTÓW NA CANVAS============
+        /*
+        // Tworzenie przycisku w górnym rogu
+        Button topButton = new Button("Podgląd");
+        StackPane.setAlignment(topButton, javafx.geometry.Pos.TOP_RIGHT); // Ustawienie pozycji w prawym górnym rogu
+        StackPane.setMargin(topButton, new javafx.geometry.Insets(10));   // Dodanie marginesów
+
+        // Tworzenie pola tekstowego w dolnym lewym rogu
+        TextField bottomLeftTextField = new TextField("Współrzędne środka: x:10, y:15.5");
+        bottomLeftTextField.setPrefWidth(200);
+        StackPane.setAlignment(bottomLeftTextField, javafx.geometry.Pos.BOTTOM_LEFT); // Dolny lewy róg
+        StackPane.setMargin(bottomLeftTextField, new javafx.geometry.Insets(10));     // Dodanie marginesów
+
+        // Tworzenie pola tekstowego w dolnym prawym rogu
+        TextField bottomRightTextField = new TextField("<Wybierz punkt pomiarowy>");
+        bottomRightTextField.setPrefWidth(200);
+        StackPane.setAlignment(bottomRightTextField, javafx.geometry.Pos.BOTTOM_RIGHT); // Dolny prawy róg
+        StackPane.setMargin(bottomRightTextField, new javafx.geometry.Insets(10));      // Dodanie marginesów
+
+        // Dodanie elementów do układu
+        sub_root.getChildren().addAll(canvas, topButton, bottomLeftTextField, bottomRightTextField);
+
+         */
+
+        // =======================CENTER BOX=============================
+        BorderPane sub_root = new BorderPane();
+        sub_root.setPadding(new Insets(10));
+
+        Rectangle canvas = new Rectangle(600, 400, Color.LIGHTGRAY);
+        Button preview_button = new Button("Preview (RAW)");
+
+        // Center coordinates
+        Label text_center_coords = new Label("Center coordinates [x] [y]: ");
+        Label coord_x = new Label("<x-value>");
+        Label coord_y = new Label("<y-value>");
+        HBox coords_box = new HBox(text_center_coords, coord_x, coord_y);
+
+        HBox under_canva = new HBox(preview_button, coords_box);
+        under_canva.setSpacing(70);
+
+        VBox centerBox = new VBox(canvas, under_canva);
+        centerBox.setAlignment(Pos.TOP_CENTER);
+        centerBox.setSpacing(10);
+        sub_root.setCenter(centerBox);
+
+        // =======================RIGHT BOX=============================
+        VBox rightBox = new VBox();
+        rightBox.setSpacing(10);
+        rightBox.setPadding(new Insets(10));
+
+        //------------------BUTTONS RIGHT BOX----------------------------
+        Button save_view = new Button("Save View");
+        Button load_view_settings = new Button("Load view settings");
+        Button open_image = new Button("Open image");
+        RadioButton denoice = new RadioButton("Denoice");
+        RadioButton upscale_ai = new RadioButton("Upscale (AI)");
+        CheckBox follow_object = new CheckBox("Follow object");
+        Button measure_distance = new Button("Measure distance");
+        Label obliczono = new Label("Obliczono [mm]: ");
+        Label obliczono_res = new Label("none");
+
+        HBox obliczono_box = new HBox();
+        obliczono_box.getChildren().addAll(obliczono, obliczono_res);
+
+        rightBox.getChildren().addAll(
+                save_view,
+                load_view_settings,
+                open_image,
+                denoice,
+                upscale_ai,
+                follow_object,
+                measure_distance,
+                obliczono_box );
+        sub_root.setRight(rightBox);
+
+        // ------------Sterowanie (GridPane na strzałki)-----------------------------------
+        GridPane controlGrid = new GridPane();
+        controlGrid.setHgap(5);
+        controlGrid.setVgap(5);
+        controlGrid.setPadding(new Insets(10));
+
+        Button up_button = new Button("^");
+        Button left_button = new Button("<");
+        Button right_button = new Button(">");
+        Button down_button = new Button("v");
+
+        controlGrid.add(up_button, 1, 0);
+        controlGrid.add(left_button, 0, 1);
+        controlGrid.add(right_button, 2, 1);
+        controlGrid.add(down_button, 1, 2);
+        rightBox.getChildren().add(new Label("Sterowanie"));
+        rightBox.getChildren().add(controlGrid);
+
+        //=======================BOTTOM BOX=============================
+        HBox bottomBox = new HBox();
+        bottomBox.setSpacing(20);
+        bottomBox.setPadding(new Insets(10));
+
+        // Suwaki (Jasność, Kontrast)
+        VBox slidersBox = new VBox();
+        slidersBox.setSpacing(10);
+
+        //---Tworzenie HBoxów z suwakami---
+        // light
+        Label lbl_light = new Label("Jasność");
+        Slider slider_light = new Slider();
+        slider_light.setMin(0);
+        slider_light.setMax(100);
+        slider_light.setValue(50);
+        HBox slider_box_light = new HBox(lbl_light, slider_light);
+        slider_box_light.setSpacing(10);
+        slider_box_light.setAlignment(Pos.CENTER_LEFT);
+
+        //contrast
+        Label lbl_contrast = new Label("Kontrast");
+        Slider slider_contrast = new Slider();
+        slider_contrast.setMin(0);
+        slider_contrast.setMax(100);
+        slider_contrast.setValue(50);
+        HBox slider_box_contrast = new HBox(lbl_contrast, slider_contrast);
+        slider_box_contrast.setSpacing(10);
+        slider_box_contrast.setAlignment(Pos.CENTER_LEFT);
+
+        slidersBox.getChildren().addAll(
+                slider_box_light,
+                slider_box_contrast );
+
+        //-------------------Scale Box--------------------------
+        VBox scaleBox = new VBox();
+        scaleBox.setSpacing(10);
+        TextField scaleField = new TextField("0,00");
+        scaleField.setPrefWidth(50);
+
+        Button plus_scale = new Button("+");
+        Button minus_scale = new Button("-");
+        HBox scaleButtons = new HBox(plus_scale, minus_scale);
+        scaleButtons.setSpacing(5);
+        scaleBox.getChildren().addAll(new Label("Scale"), scaleField, scaleButtons);
+
+        //-----------------Options Box-----------------------
+        VBox optionsBox = new VBox();
+        optionsBox.setSpacing(10);
+
+        //----choice_box_mode----
+        ChoiceBox choice_box_mode = new ChoiceBox();
+        choice_box_mode.getItems().add("RAW");
+        choice_box_mode.getItems().add("Negative");
+        choice_box_mode.getItems().add("One-channel");
+        choice_box_mode.setValue("RAW");
+
+        RadioButton show_grid = new RadioButton("Show grid");
+        optionsBox.getChildren().addAll(
+                choice_box_mode,
+                show_grid );
+
+        // Dodanie sekcji dolnej
+        bottomBox.getChildren().addAll(slidersBox, scaleBox, optionsBox);
+        sub_root.setBottom(bottomBox);
+
+        VBox root = new VBox(menuBar, sub_root);
+        // Ustawienie sceny i wyświetlenie
+        Scene scene = new Scene(root, 800, 600);
+        primaryStage.setTitle("STraceScope");
+        primaryStage.setScene(scene);
         primaryStage.show();
 
+        //---REST---
+        g_s = new Game_service();
+        g_s.valueProperty().addListener(this::changed);
+        g_s.start();
+        primaryStage.show();
     }
 
     public void changed(ObservableValue<? extends P_move> observable,
@@ -165,12 +344,7 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
                         P_move newValue)
     {
         if(newValue != null) System.out.println("changed method called, x = " + newValue.x + "y = " + newValue.y);
-
-
-
     }
-
-
 
     public void item_1()
     {
@@ -180,7 +354,6 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
     public void exit_dialog()
     {
         System.out.println("exit dialog");
-
 
         Alert alert = new Alert(AlertType.CONFIRMATION,
                 "Do you really want to exit the program?.",
