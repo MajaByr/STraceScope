@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serial;
+import java.nio.Buffer;
 
 public class Frames {
     private static final int FRAME_WIDTH  = 640;
@@ -24,7 +25,6 @@ public class Frames {
 
     static public void update_edit_settings(boolean[] new_settings)
     {
-        System.out.println("Previous editing settings: " + editing_settings[0] +", " + editing_settings[1] +", " + editing_settings[2]);
         editing_settings = new_settings;
         System.out.println("Updated editing settings: " + editing_settings[0] +", " + editing_settings[1] +", " + editing_settings[2]);
     }
@@ -38,6 +38,9 @@ public class Frames {
 
         //Negative
         if( editing_settings[1] ) edited = negative(edited);
+
+        // Add grid
+        if( editing_settings[2] ) edited = add_grid(edited);
 
         return edited;
     }
@@ -97,15 +100,33 @@ public class Frames {
         return raw;
     }
 
-    private BufferedImage add_grid( BufferedImage raw )
+    static private BufferedImage add_grid( BufferedImage raw )
     {
-        for( int y=0; y<FRAME_HEIGHT; y+=FRAME_HEIGHT/3 ) {
-            for ( int x=0; x<FRAME_WIDTH; x+=FRAME_WIDTH/3 )
+        BufferedImage edited = raw;
+        int white = (255 << 24) | (255 << 16) | (255 << 8) | 255;
+        for( int y=FRAME_HEIGHT/3; y<FRAME_HEIGHT; y+=FRAME_HEIGHT/3 )
+        {
+            for(int x=0; x<FRAME_WIDTH; x++)
             {
-                //dla każdego piksela znajdującego się na linii siatki o grubości (dać grubość 2-4 px)
+                for(int i=0; i<6; i++)
+                {
+                    if(x+i < FRAME_WIDTH && y < FRAME_HEIGHT) edited.setRGB(x + i, y, white);
+                }
             }
         }
-        return raw;
+
+        for ( int x=FRAME_WIDTH/3; x<FRAME_WIDTH; x+=FRAME_WIDTH/3 )
+        {
+            for(int y=0; y<FRAME_HEIGHT; y++)
+            {
+                for(int i=0; i<6; i++)
+                {
+                    if(x < FRAME_WIDTH && y+i < FRAME_HEIGHT) edited.setRGB(x, y+i, white);
+                }
+            }
+        }
+
+        return edited;
     }
 
     public BufferedImage convert_to_BI(byte buffer[])

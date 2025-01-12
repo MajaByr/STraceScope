@@ -177,7 +177,7 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         sub_root.setPadding(new Insets(10));
 
         //Rectangle canvas = new Rectangle(600, 400, Color.LIGHTGRAY);
-        canvas     = new Canvas(600, 400);
+        canvas     = new Canvas(FRAME_WIDTH, FRAME_HEIGHT);
         gc         = canvas.getGraphicsContext2D();
 
         Button preview_button = new Button("Preview (RAW)");
@@ -196,7 +196,7 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         HBox coords_box = new HBox(text_center_coords, coord_x, coord_y);
 
         HBox under_canva = new HBox(preview_button, coords_box);
-        under_canva.setSpacing(70);
+        under_canva.setSpacing(10);
 
         VBox centerBox = new VBox(canvas, under_canva);
         centerBox.setAlignment(Pos.TOP_CENTER);
@@ -308,10 +308,6 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         choice_box_mode.getItems().add("Negative");
         choice_box_mode.setValue("RAW");
         //--Obsługa--
-        /*
-                    editing_settings[0] = true;
-            Frames.update_edit_settings(editing_settings);
-        */
         choice_box_mode.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>() {
             public void changed(ObservableValue ov, Number value, Number new_value)
             {
@@ -329,10 +325,15 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
             }
         });
 
+        CheckBox show_grid = new CheckBox("Show grid");
+        show_grid.selectedProperty().addListener(
+                (ObservableValue<? extends Boolean> ov, Boolean old_val, Boolean new_val) -> {
+                    //text1.setText("Welcome to Tutorilaspoint");
+                    editing_settings[2] = show_grid.isSelected();
+                    Frames.update_edit_settings(editing_settings);
+                    show_file_image(program_path + selected_file);
+                });
 
-
-
-        RadioButton show_grid = new RadioButton("Show grid");
         optionsBox.getChildren().addAll(
                 choice_box_mode,
                 show_grid );
@@ -343,7 +344,7 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
 
         VBox root = new VBox(menuBar, sub_root);
         // Ustawienie sceny i wyświetlenie
-        Scene scene = new Scene(root, 800, 600);
+        Scene scene = new Scene(root, 1000, 700);
         primaryStage.setTitle("STraceScope");
         primaryStage.setScene(scene);
         primaryStage.show();
@@ -382,20 +383,17 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
     {
         BufferedImage img = Frames.load_from_file(path);
         byte[] bt_img = Frames.convert_BI_to_bytes(Frames.edit_BI(img));
-
         pixelWriter = gc.getPixelWriter();
         pixelFormat = PixelFormat.getByteRgbInstance();
-        pixelWriter.setPixels(25, 25, FRAME_WIDTH, FRAME_HEIGHT, pixelFormat, bt_img, 0, FRAME_WIDTH * 3);
+        pixelWriter.setPixels(0, 0, FRAME_WIDTH, FRAME_HEIGHT, pixelFormat, bt_img, 0, FRAME_WIDTH * 3);
     }
 
     private void disp_frame()
     {
         pixelWriter = gc.getPixelWriter();
         pixelFormat = PixelFormat.getByteRgbInstance();
-
         buffer = frames.get_frame();
         pixelWriter.setPixels(25, 25, FRAME_WIDTH, FRAME_HEIGHT, pixelFormat, buffer, 0, FRAME_WIDTH*3);
-
     }
 
     public void exit_dialog()
