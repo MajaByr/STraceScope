@@ -41,12 +41,13 @@ import javafx.scene.input.MouseEvent;
 
 import stracescope_code.cam.Frames;
 
-
 public class Cam extends Application
 {
     private static final int FRAME_WIDTH  = 640;
     private static final int FRAME_HEIGHT = 480;
 
+    GraphicsContext gc;
+    Canvas canvas;
     byte buffer[];
     PixelWriter pixelWriter;
     PixelFormat<ByteBuffer> pixelFormat;
@@ -67,10 +68,15 @@ public class Cam extends Application
 
         primaryStage.setTitle("Camera");
         Scene scene;
+
         Group root = new Group();
+        canvas     = new Canvas(1080, 720);
+        gc         = canvas.getGraphicsContext2D();
+
         timeline = new Timeline(new KeyFrame(Duration.millis(130), e->disp_frame()));
         timeline.setCycleCount(Timeline.INDEFINITE);
         timeline.play();
+
         root.getChildren().add(canvas);
         scene = new Scene(root);
         primaryStage.setScene(scene);
@@ -79,11 +85,12 @@ public class Cam extends Application
 
     private void disp_frame()
     {
-
         pixelWriter = gc.getPixelWriter();
         pixelFormat = PixelFormat.getByteRgbInstance();
+
         buffer = frames.get_frame();
         pixelWriter.setPixels(25, 25, FRAME_WIDTH, FRAME_HEIGHT, pixelFormat, buffer, 0, FRAME_WIDTH*3);
+
     }
 
 }

@@ -1,13 +1,19 @@
 package stracescope_code.cam;
 
+import javax.imageio.ImageIO;
 import java.awt.image.*;
 import java.awt.image.BufferedImage;
-
-
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.Serial;
 
 public class Frames {
     private static final int FRAME_WIDTH  = 640;
     private static final int FRAME_HEIGHT = 480;
+
+    // monochromatic, negative
+    static private boolean[] editing_settings = {false, false, false};
 
     static public native int   open_shm(String shm_name);
     static public native byte[] get_frame();
@@ -16,20 +22,58 @@ public class Frames {
 
     public BufferedImage bi;
 
+    static public void update_edit_settings(boolean[] new_settings)
+    {
+        System.out.println("Previous editing settings: " + editing_settings[0] +", " + editing_settings[1] +", " + editing_settings[2]);
+        editing_settings = new_settings;
+        System.out.println("Updated editing settings: " + editing_settings[0] +", " + editing_settings[1] +", " + editing_settings[2]);
+    }
+
+    static public BufferedImage edit_BI(BufferedImage raw)
+    {
+        BufferedImage edited = raw;
+
+        //One-channel
+        if( editing_settings[0] )  edited = monochromatic(edited);
+
+        //Negative
+        if( editing_settings[1] ) edited = negative(edited);
+
+        return edited;
+    }
+
     public Frames()
     {
         System.loadLibrary("frames");
-
         RGB_pixels = new int[FRAME_WIDTH*FRAME_HEIGHT];
     }
 
-    private BufferedImage monochromatic(BufferedImage raw) //zwraca obraz w trybie jednokanałowym
+    static public BufferedImage monochromatic(BufferedImage raw) //zwraca obraz w trybie jednokanałowym
     {
-        //return BufferedImage.TYPE_BYTE_BINARY;
-        return raw;
+        BufferedImage one_channel =  new BufferedImage(FRAME_WIDTH, FRAME_HEIGHT, BufferedImage.TYPE_BYTE_GRAY);
+
+        // Iterowanie po każdym pikselu
+        for (int y = 0; y < FRAME_HEIGHT; y++) {
+            for (int x = 0; x < FRAME_WIDTH; x++) {
+                // Pobieramy wartość RGB piksela
+                int rgb = raw.getRGB(x, y);
+
+                int r = (rgb >> 16) & 0xFF;
+                int g = (rgb >> 8) & 0xFF;
+                int b = rgb & 0xFF;
+
+                //uniwersalny wzór na przekształcenie w odcienie szarości
+                int gray = (int)(0.299 * r + 0.587 * g + 0.114 * b);
+
+                int grayRgb = (gray << 16) | (gray << 8) | gray;
+                one_channel.setRGB(x, y, grayRgb);
+            }
+        }
+
+        return one_channel;
     }
 
-    private BufferedImage negative(BufferedImage raw)
+    static public BufferedImage negative(BufferedImage raw)
     {
         // Dla każdego piksela z wysokości, szerokości wykonać przekształcenie na kolor przeciwny
         for (int y = 0; y < FRAME_HEIGHT; y++) {
@@ -80,5 +124,39 @@ public class Frames {
         bi.setRGB(0, 0, FRAME_WIDTH, FRAME_HEIGHT, RGB_pixels, 0, FRAME_WIDTH);
 
         return bi;
+    }
+
+    static public BufferedImage load_from_file(String path)
+    {
+        BufferedImage img = null;
+        try {
+            img = ImageIO.read(new File(path));
+            System.out.println("image loaded ok");
+        } catch (IOException e) {}
+
+        return img;
+    }
+
+    static public byte[] convert_BI_to_bytes( BufferedImage BI )
+    {
+        int width = BI.getWidth();
+        int height = BI.getHeight();
+        byte[] buffer = new byte[width * height * 3]; // 3, bo RGB
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int argb = BI.getRGB(x, y);
+                int r = (argb >> 16) & 0xFF;
+                int g = (argb >> 8) & 0xFF;
+                int b = argb & 0xFF;
+
+                int index = (y * width + x) * 3;
+                buffer[index] = (byte) r;
+                buffer[index + 1] = (byte) g;
+                buffer[index + 2] = (byte) b;
+            }
+        }
+
+        return buffer;
     }
 }

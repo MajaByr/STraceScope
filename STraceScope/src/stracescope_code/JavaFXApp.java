@@ -1,17 +1,19 @@
 package stracescope_code;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.*;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.stage.*;
-import javafx.scene.*;
+import javafx.scene.image.PixelFormat;
+import javafx.scene.image.PixelWriter;
 import javafx.scene.layout.*;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
+import java.awt.image.BufferedImage;
+import java.nio.ByteBuffer;
 import java.util.*;
 import javafx.concurrent.*;
 import javafx.beans.value.*;
@@ -19,11 +21,14 @@ import javafx.beans.value.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
+
+import javafx.scene.effect.DropShadow;
+
+import javafx.util.Duration;
+import stracescope_code.cam.Frames;
+import javafx.application.Application;
+
 
 class P_move
 {
@@ -106,27 +111,28 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
     Game_service g_s;
     GraphicsContext gc;
     Canvas canvas;
+    boolean real_time_image = false;
+    Timeline timeline;
+    Frames frames;
+    int result;
+    String program_path = "/home/maja/Studia/5 Semestr/JAVA/Mikroskop/STraceScope/STraceScope/STraceScope/";
+    String selected_file = "saved_images/mufasa.png";
+
+    boolean[] editing_settings = {false, false, false};
+
+    private static final int FRAME_WIDTH  = 640;
+    private static final int FRAME_HEIGHT = 480;
+
+    byte buffer[];
+    PixelWriter pixelWriter;
+    PixelFormat<ByteBuffer> pixelFormat;
 
     public static void main(String[] args) {
         launch(args);
     }
 
-    // Tworzenie HBox z labelem do slidera + sliderem
-    private HBox createLabeledSlider(String label) {
-        Label lbl = new Label(label);
-        Slider slider = new Slider();
-        slider.setMin(0);
-        slider.setMax(100);
-        slider.setValue(50);
-        HBox box = new HBox(lbl, slider);
-        box.setSpacing(10);
-        box.setAlignment(Pos.CENTER_LEFT);
-        return box;
-    }
-
-    @Override
-    public void start(Stage primaryStage) {
-        //=====================MENU BAR=======================
+    private MenuBar setUpMenu(Stage primaryStage)
+    {
         Menu menu1 = new Menu("File");
         MenuItem menuItem1 = new MenuItem("Item 1");
         MenuItem menuItem2 = new MenuItem("Exit");
@@ -145,57 +151,43 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
             e.consume();
             exit_dialog();
         });
+        return menuBar;
+    }
 
+    // Tworzenie HBox z labelem do slidera + sliderem
+    private HBox createLabeledSlider(String label) {
+        Label lbl = new Label(label);
+        Slider slider = new Slider();
+        slider.setMin(0);
+        slider.setMax(100);
+        slider.setValue(50);
+        HBox box = new HBox(lbl, slider);
+        box.setSpacing(10);
+        box.setAlignment(Pos.CENTER_LEFT);
+        return box;
+    }
 
-
-/*
-        //---------BUTTON ONCLICKED----------
-
-        // Push buttons
-        // create a button
-        Button b = new Button("button");
-        EventHandler<ActionEvent> event = new EventHandler<ActionEvent>() {
-            public void handle(ActionEvent e)
-            {
-                b.setText("_Click");
-            }
-        };
-
-        b.setOnAction(event);
-        // add button
-        sub_root.getChildren().add(b);
-*/
-
-        //==========================NAKŁADANIE ELEMENTÓW NA CANVAS============
-        /*
-        // Tworzenie przycisku w górnym rogu
-        Button topButton = new Button("Podgląd");
-        StackPane.setAlignment(topButton, javafx.geometry.Pos.TOP_RIGHT); // Ustawienie pozycji w prawym górnym rogu
-        StackPane.setMargin(topButton, new javafx.geometry.Insets(10));   // Dodanie marginesów
-
-        // Tworzenie pola tekstowego w dolnym lewym rogu
-        TextField bottomLeftTextField = new TextField("Współrzędne środka: x:10, y:15.5");
-        bottomLeftTextField.setPrefWidth(200);
-        StackPane.setAlignment(bottomLeftTextField, javafx.geometry.Pos.BOTTOM_LEFT); // Dolny lewy róg
-        StackPane.setMargin(bottomLeftTextField, new javafx.geometry.Insets(10));     // Dodanie marginesów
-
-        // Tworzenie pola tekstowego w dolnym prawym rogu
-        TextField bottomRightTextField = new TextField("<Wybierz punkt pomiarowy>");
-        bottomRightTextField.setPrefWidth(200);
-        StackPane.setAlignment(bottomRightTextField, javafx.geometry.Pos.BOTTOM_RIGHT); // Dolny prawy róg
-        StackPane.setMargin(bottomRightTextField, new javafx.geometry.Insets(10));      // Dodanie marginesów
-
-        // Dodanie elementów do układu
-        sub_root.getChildren().addAll(canvas, topButton, bottomLeftTextField, bottomRightTextField);
-
-         */
+    @Override
+    public void start(Stage primaryStage) {
+        //=====================MENU BAR=================================
+        MenuBar menuBar = setUpMenu(primaryStage);
 
         // =======================CENTER BOX=============================
         BorderPane sub_root = new BorderPane();
         sub_root.setPadding(new Insets(10));
 
-        Rectangle canvas = new Rectangle(600, 400, Color.LIGHTGRAY);
+        //Rectangle canvas = new Rectangle(600, 400, Color.LIGHTGRAY);
+        canvas     = new Canvas(600, 400);
+        gc         = canvas.getGraphicsContext2D();
+
         Button preview_button = new Button("Preview (RAW)");
+
+        //---actions on Preview (RAW)
+        // dodanie reagowania przycisku na zdefiniowaną akcję
+        preview_button.setOnMousePressed(e -> preview_button.setText("Showing RAW"));
+        preview_button.setOnMouseEntered(e -> preview_button.setEffect(new DropShadow()));
+        preview_button.setOnMouseExited(e -> preview_button.setEffect(null));
+        preview_button.setOnMouseReleased(e -> preview_button.setText("Preview (RAW)"));
 
         // Center coordinates
         Label text_center_coords = new Label("Center coordinates [x] [y]: ");
@@ -211,7 +203,7 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         centerBox.setSpacing(10);
         sub_root.setCenter(centerBox);
 
-        // =======================RIGHT BOX=============================
+        // =======================RIGHT BOX===================================
         VBox rightBox = new VBox();
         rightBox.setSpacing(10);
         rightBox.setPadding(new Insets(10));
@@ -312,9 +304,33 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         //----choice_box_mode----
         ChoiceBox choice_box_mode = new ChoiceBox();
         choice_box_mode.getItems().add("RAW");
-        choice_box_mode.getItems().add("Negative");
         choice_box_mode.getItems().add("One-channel");
+        choice_box_mode.getItems().add("Negative");
         choice_box_mode.setValue("RAW");
+        //--Obsługa--
+        /*
+                    editing_settings[0] = true;
+            Frames.update_edit_settings(editing_settings);
+        */
+        choice_box_mode.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>() {
+            public void changed(ObservableValue ov, Number value, Number new_value)
+            {
+                // set the text for the label to the selected item
+               // l1.setText(st[new_value.intValue()] + " selected");
+
+                for(int i=0; i<3; i++)
+                {
+                    if( new_value.intValue()-1 == i ) editing_settings[i]=true;
+                    else editing_settings[i]=false;
+                }
+
+                Frames.update_edit_settings(editing_settings);
+                show_file_image(program_path + selected_file);
+            }
+        });
+
+
+
 
         RadioButton show_grid = new RadioButton("Show grid");
         optionsBox.getChildren().addAll(
@@ -331,6 +347,17 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         primaryStage.setTitle("STraceScope");
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        if( real_time_image ) {
+            frames = new Frames();
+            //result = frames.open_shm(program_path + "frames");
+
+            timeline = new Timeline(new KeyFrame(Duration.millis(130), e->disp_frame()));
+            timeline.setCycleCount(Timeline.INDEFINITE);
+            timeline.play();
+        } else {
+            show_file_image(program_path + selected_file);
+        }
 
         //---REST---
         g_s = new Game_service();
@@ -349,6 +376,26 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
     public void item_1()
     {
         System.out.println("item 1");
+    }
+
+    private void show_file_image(String path)
+    {
+        BufferedImage img = Frames.load_from_file(path);
+        byte[] bt_img = Frames.convert_BI_to_bytes(Frames.edit_BI(img));
+
+        pixelWriter = gc.getPixelWriter();
+        pixelFormat = PixelFormat.getByteRgbInstance();
+        pixelWriter.setPixels(25, 25, FRAME_WIDTH, FRAME_HEIGHT, pixelFormat, bt_img, 0, FRAME_WIDTH * 3);
+    }
+
+    private void disp_frame()
+    {
+        pixelWriter = gc.getPixelWriter();
+        pixelFormat = PixelFormat.getByteRgbInstance();
+
+        buffer = frames.get_frame();
+        pixelWriter.setPixels(25, 25, FRAME_WIDTH, FRAME_HEIGHT, pixelFormat, buffer, 0, FRAME_WIDTH*3);
+
     }
 
     public void exit_dialog()
