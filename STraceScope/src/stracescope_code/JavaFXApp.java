@@ -118,7 +118,7 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
     String program_path = "/home/maja/Studia/5 Semestr/JAVA/Mikroskop/STraceScope/STraceScope/STraceScope/";
     String selected_file = "saved_images/mufasa.png";
 
-    boolean[] editing_settings = {false, false, false};
+    boolean[] editing_settings = {false, false, false, false};
 
     private static final int FRAME_WIDTH  = 640;
     private static final int FRAME_HEIGHT = 480;
@@ -180,14 +180,24 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         canvas     = new Canvas(FRAME_WIDTH, FRAME_HEIGHT);
         gc         = canvas.getGraphicsContext2D();
 
-        Button preview_button = new Button("Preview (RAW)");
+        Button preview_button = new Button("Show preview (RAW)");
 
         //---actions on Preview (RAW)
         // dodanie reagowania przycisku na zdefiniowaną akcję
-        preview_button.setOnMousePressed(e -> preview_button.setText("Showing RAW"));
+        preview_button.setOnMousePressed(e -> {
+            preview_button.setText("Showing RAW");
+            editing_settings[3] = true;
+            Frames.update_edit_settings(editing_settings);
+            show_file_image(program_path + selected_file);
+        });
         preview_button.setOnMouseEntered(e -> preview_button.setEffect(new DropShadow()));
         preview_button.setOnMouseExited(e -> preview_button.setEffect(null));
-        preview_button.setOnMouseReleased(e -> preview_button.setText("Preview (RAW)"));
+        preview_button.setOnMouseReleased(e -> {
+            preview_button.setText("Show preview (RAW)");
+            editing_settings[3] = false;
+            Frames.update_edit_settings(editing_settings);
+            show_file_image(program_path + selected_file);
+        });
 
         // Center coordinates
         Label text_center_coords = new Label("Center coordinates [x] [y]: ");
@@ -314,7 +324,7 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
                 // set the text for the label to the selected item
                // l1.setText(st[new_value.intValue()] + " selected");
 
-                for(int i=0; i<3; i++)
+                for(int i=0; i<2; i++)
                 {
                     if( new_value.intValue()-1 == i ) editing_settings[i]=true;
                     else editing_settings[i]=false;

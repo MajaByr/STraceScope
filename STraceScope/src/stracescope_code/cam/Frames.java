@@ -14,7 +14,7 @@ public class Frames {
     private static final int FRAME_HEIGHT = 480;
 
     // monochromatic, negative
-    static private boolean[] editing_settings = {false, false, false};
+    static private boolean[] editing_settings = {false, false, false, false};
 
     static public native int   open_shm(String shm_name);
     static public native byte[] get_frame();
@@ -33,6 +33,7 @@ public class Frames {
     {
         BufferedImage edited = raw;
 
+        if( editing_settings[3] ) return raw;
         //One-channel
         if( editing_settings[0] )  edited = monochromatic(edited);
 
