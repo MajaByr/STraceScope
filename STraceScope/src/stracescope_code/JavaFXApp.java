@@ -130,9 +130,6 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
     BufferedImage edited_BI;
     Label coord_y;
     int result;
-    String program_path = "/home/maja/Studia/5 Semestr/JAVA/Mikroskop/STraceScope/STraceScope/STraceScope/";
-    String selected_file = "saved_images/mufasa.png";
-
     FileChooser fileChooser = new FileChooser();
     /*fileChooser.setTitle("Save");
     fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("All Files", "*.*"));
@@ -216,14 +213,13 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
             preview_button.setText("Show preview (RAW)");
             editing_settings[3] = false;
             Frames.update_edit_settings(editing_settings);
-            update_edited_image();
-            plot_edited_image();
+            refresh();
         });
 
         // Center coordinates
         Label text_center_coords = new Label("Center coordinates [x] [y]: ");
-        coord_x = new Label(Frames.get_x_c() + "");
-        coord_y = new Label(Frames.get_y_c() + "");
+        coord_x = new Label(Frames.get_x_c() + " ");
+        coord_y = new Label(" " + Frames.get_y_c());
         HBox coords_box = new HBox(text_center_coords, coord_x, coord_y);
 
         HBox under_canva = new HBox(preview_button, coords_box);
@@ -245,11 +241,28 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
             save_current_view(primaryStage);
         });
 
-        Button load_view_settings = new Button("Load view settings");
+        Button load_view_settings = new Button("Import view settings");
+        load_view_settings.setOnMousePressed(e -> {
+            import_view_settings(primaryStage);
+            refresh();
+        });
         Button export_view_settings = new Button("Export view settings");
+        export_view_settings.setOnMousePressed(e -> {
+            export_view_settings(primaryStage);
+        });
+
         Button open_image = new Button("Open image");
         open_image.setOnMousePressed(e -> {
             select_and_load_image(primaryStage);
+        });
+
+        Button start_session = new Button("Start live session");
+        start_session.setOnMousePressed(e -> {
+            real_time_image = true;
+            frames = new Frames();
+            timeline = new Timeline(new KeyFrame(Duration.millis(130), e0->disp_frame()));
+            timeline.setCycleCount(Timeline.INDEFINITE);
+            timeline.play();
         });
 
         RadioButton denoice = new RadioButton("Denoice");
@@ -263,10 +276,11 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         obliczono_box.getChildren().addAll(obliczono, obliczono_res);
 
         rightBox.getChildren().addAll(
+                start_session,
                 save_view,
+                open_image,
                 load_view_settings,
                 export_view_settings,
-                open_image,
                 denoice,
                 upscale_ai,
                 follow_object,
@@ -344,7 +358,6 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
                         System.out.println("Contrast changed to: " + (double)newValue/100);
                         refresh();
                     }
-
                 });
 
         slidersBox.getChildren().addAll(
@@ -433,17 +446,6 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        if( real_time_image ) {
-            frames = new Frames();
-            //result = frames.open_shm(program_path + "frames");
-
-            timeline = new Timeline(new KeyFrame(Duration.millis(130), e->disp_frame()));
-            timeline.setCycleCount(Timeline.INDEFINITE);
-            timeline.play();
-        } else {
-            show_file_image(program_path + selected_file);
-        }
-
         //---REST---
         g_s = new Game_service();
         g_s.valueProperty().addListener(this::changed);
@@ -487,8 +489,7 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
     {
         File file = fileChooser.showOpenDialog(primaryStage);
         load_image_from_file(file.getAbsolutePath());
-        update_edited_image();
-        plot_edited_image();
+        refresh();
     }
 
     private void update_edited_image()
@@ -506,12 +507,13 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
 
     private void disp_frame()
     {
-        pixelWriter = gc.getPixelWriter();
-        pixelFormat = PixelFormat.getByteRgbInstance();
-        buffer = frames.get_frame();
-        curr_BI = Frames.convert_to_BI(buffer);
-        update_edited_image();
-        plot_edited_image();
+        if (real_time_image  ) {
+            pixelWriter = gc.getPixelWriter();
+            pixelFormat = PixelFormat.getByteRgbInstance();
+            buffer = frames.get_frame();
+            curr_BI = Frames.convert_to_BI(buffer);
+            refresh();
+        }
     }
 
     private void save_current_view(Stage primaryStage)
@@ -542,5 +544,19 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         {
         }
 
+    }
+
+    public void export_view_settings(Stage primaryStage)
+    {
+        String csv_settings = Frames.get_settings();
+        File file = fileChooser.showSaveDialog(primaryStage);
+        FileChooserSavingFile.save_view_settings(csv_settings, file);
+    }
+
+    public void import_view_settings(Stage primaryStage)
+    {
+        File file = fileChooser.showOpenDialog(primaryStage);
+        String csv_settings = FileChooserSavingFile.read_settings(file);
+        Frames.apply_settings(csv_settings);
     }
 }

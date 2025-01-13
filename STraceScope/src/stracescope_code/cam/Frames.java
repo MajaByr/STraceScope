@@ -108,7 +108,7 @@ public class Frames {
 
         if( scale!=1.0 ) edited = scale_BI(edited);
 
-            //One-channel
+        //One-channel
         if( editing_settings[0] )  edited = monochromatic(edited);
 
         //Negative
@@ -120,6 +120,33 @@ public class Frames {
         edited = change_contrast(edited);
 
         return edited;
+    }
+
+    static public String get_settings()
+    {
+        String res = "";
+        res += Integer.toString(x_c) + "," + Integer.toString(y_c) + "," + Double.toString(scale) + "," +
+            Boolean.toString(editing_settings[0]) + "," + Boolean.toString(editing_settings[1]) + "," +
+            Boolean.toString(editing_settings[2]) + "," + Double.toString(brightness) + "," +
+            Double.toString(contrast);
+
+        //x_c, y_c, scale, one-channel, negative, grid, brightness, contrast
+        System.out.println(res);
+        return res;
+    }
+
+    static public void apply_settings( String csv_settings )
+    {
+        String[] values = csv_settings.split(",");
+        //x_c, y_c, scale, one-channel, negative, grid, brightness, contrast
+        x_c = Integer.parseInt(values[0]);
+        y_c = Integer.parseInt(values[1]);
+        scale = Double.parseDouble(values[2]);
+        editing_settings[0] = Boolean.parseBoolean(values[3]);
+        editing_settings[1] = Boolean.parseBoolean(values[4]);
+        editing_settings[2] = Boolean.parseBoolean(values[5]);
+        brightness = Double.parseDouble(values[6]);
+        contrast = Double.parseDouble(values[7]);
     }
 
     public Frames()

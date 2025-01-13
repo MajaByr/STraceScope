@@ -14,6 +14,17 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.FileChooser.ExtensionFilter;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.io.*;
+import java.io.IOException;
 
 import javax.imageio.ImageIO;
 
@@ -73,8 +84,38 @@ public class FileChooserSavingFile extends Application {
         }
     }
 
-    public static void select_file()
+    public static void save_view_settings(String csv_settings, File file)
     {
+        String format;
+        String fileName = file.getName();
+        if (fileName.endsWith(".csv")) {
+            format = "csv";
+        } else {
+            format = "csv";
+            file = new File(file.getAbsolutePath() + ".csv");
+        }
 
+        try {
+            PrintWriter pw = new PrintWriter(file);
+            pw.write(csv_settings);
+            pw.flush();
+            pw.close();
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    static public String read_settings(File file)
+    {
+        Path filePath = Paths.get(file.getAbsolutePath());
+        try {
+            String settings = Files.readString(filePath);
+            return settings;
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }
