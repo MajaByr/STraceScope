@@ -7,10 +7,13 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelWriter;
+import java.io.File;
 import javafx.scene.layout.*;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import javafx.stage.FileChooser.ExtensionFilter;
+import javafx.stage.FileChooser;
 
 import java.awt.image.BufferedImage;
 import java.nio.ByteBuffer;
@@ -21,6 +24,7 @@ import javafx.beans.value.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import javafx.scene.effect.DropShadow;
@@ -28,6 +32,11 @@ import javafx.scene.effect.DropShadow;
 import javafx.util.Duration;
 import stracescope_code.cam.Frames;
 import javafx.application.Application;
+
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+
 
 
 class P_move
@@ -114,10 +123,18 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
     boolean real_time_image = false;
     Timeline timeline;
     Frames frames;
+    Label coord_x;
+    BufferedImage curr_BI;
+    BufferedImage edited_BI;
+    Label coord_y;
     int result;
     String program_path = "/home/maja/Studia/5 Semestr/JAVA/Mikroskop/STraceScope/STraceScope/STraceScope/";
     String selected_file = "saved_images/mufasa.png";
 
+    FileChooser fileChooser = new FileChooser();
+    /*fileChooser.setTitle("Save");
+    fileChooser.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("All Files", "*.*"));
+*/
     boolean[] editing_settings = {false, false, false, false};
 
     private static final int FRAME_WIDTH  = 640;
@@ -188,7 +205,8 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
             preview_button.setText("Showing RAW");
             editing_settings[3] = true;
             Frames.update_edit_settings(editing_settings);
-            show_file_image(program_path + selected_file);
+            update_edited_image();
+            plot_edited_image();
         });
         preview_button.setOnMouseEntered(e -> preview_button.setEffect(new DropShadow()));
         preview_button.setOnMouseExited(e -> preview_button.setEffect(null));
@@ -196,13 +214,14 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
             preview_button.setText("Show preview (RAW)");
             editing_settings[3] = false;
             Frames.update_edit_settings(editing_settings);
-            show_file_image(program_path + selected_file);
+            update_edited_image();
+            plot_edited_image();
         });
 
         // Center coordinates
         Label text_center_coords = new Label("Center coordinates [x] [y]: ");
-        Label coord_x = new Label("<x-value>");
-        Label coord_y = new Label("<y-value>");
+        coord_x = new Label("<x-value>");
+        coord_y = new Label("<y-value>");
         HBox coords_box = new HBox(text_center_coords, coord_x, coord_y);
 
         HBox under_canva = new HBox(preview_button, coords_box);
@@ -220,8 +239,17 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
 
         //------------------BUTTONS RIGHT BOX----------------------------
         Button save_view = new Button("Save View");
+        save_view.setOnMousePressed(e -> {
+            save_current_view(primaryStage);
+        });
+
         Button load_view_settings = new Button("Load view settings");
+        Button export_view_settings = new Button("Export view settings");
         Button open_image = new Button("Open image");
+        open_image.setOnMousePressed(e -> {
+            select_and_load_image(primaryStage);
+        });
+
         RadioButton denoice = new RadioButton("Denoice");
         RadioButton upscale_ai = new RadioButton("Upscale (AI)");
         CheckBox follow_object = new CheckBox("Follow object");
@@ -235,6 +263,7 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         rightBox.getChildren().addAll(
                 save_view,
                 load_view_settings,
+                export_view_settings,
                 open_image,
                 denoice,
                 upscale_ai,
@@ -280,6 +309,17 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         HBox slider_box_light = new HBox(lbl_light, slider_light);
         slider_box_light.setSpacing(10);
         slider_box_light.setAlignment(Pos.CENTER_LEFT);
+        slider_light.valueProperty().addListener(
+                new ChangeListener<Number>() {
+                    public void changed(ObservableValue <? extends Number >
+                                                observable, Number oldValue, Number newValue)
+                    {
+                        Frames.set_brightness((double) newValue/100);
+                        System.out.println("Brightness changed to: " + (double)newValue/100);
+                        update_edited_image();
+                        plot_edited_image();
+                    }
+                });
 
         //contrast
         Label lbl_contrast = new Label("Kontrast");
@@ -290,6 +330,18 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         HBox slider_box_contrast = new HBox(lbl_contrast, slider_contrast);
         slider_box_contrast.setSpacing(10);
         slider_box_contrast.setAlignment(Pos.CENTER_LEFT);
+        slider_contrast.valueProperty().addListener(
+                new ChangeListener<Number>() {
+                    public void changed(ObservableValue <? extends Number >
+                                                observable, Number oldValue, Number newValue)
+                    {
+                        Frames.set_contrast((double) newValue/100);
+                        System.out.println("Contrast changed to: " + (double)newValue/100);
+                        update_edited_image();
+                        plot_edited_image();
+                    }
+
+                });
 
         slidersBox.getChildren().addAll(
                 slider_box_light,
@@ -321,9 +373,6 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         choice_box_mode.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>() {
             public void changed(ObservableValue ov, Number value, Number new_value)
             {
-                // set the text for the label to the selected item
-               // l1.setText(st[new_value.intValue()] + " selected");
-
                 for(int i=0; i<2; i++)
                 {
                     if( new_value.intValue()-1 == i ) editing_settings[i]=true;
@@ -331,7 +380,8 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
                 }
 
                 Frames.update_edit_settings(editing_settings);
-                show_file_image(program_path + selected_file);
+                update_edited_image();
+                plot_edited_image();
             }
         });
 
@@ -341,7 +391,8 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
                     //text1.setText("Welcome to Tutorilaspoint");
                     editing_settings[2] = show_grid.isSelected();
                     Frames.update_edit_settings(editing_settings);
-                    show_file_image(program_path + selected_file);
+                    update_edited_image();
+                    plot_edited_image();
                 });
 
         optionsBox.getChildren().addAll(
@@ -384,6 +435,13 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         if(newValue != null) System.out.println("changed method called, x = " + newValue.x + "y = " + newValue.y);
     }
 
+    public void refresh()
+    {
+        show_file_image(program_path + selected_file);
+        coord_x.setText(Frames.get_x_px() + " ");
+        coord_y.setText(" " + Frames.get_y_px());
+    }
+
     public void item_1()
     {
         System.out.println("item 1");
@@ -391,11 +449,35 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
 
     private void show_file_image(String path)
     {
-        BufferedImage img = Frames.load_from_file(path);
-        byte[] bt_img = Frames.convert_BI_to_bytes(Frames.edit_BI(img));
+        load_image_from_file(path);
+        update_edited_image();
+        plot_edited_image();
+    }
+
+    private void load_image_from_file(String path)
+    {
+        curr_BI = Frames.load_from_file(path);
+    }
+
+    private void select_and_load_image(Stage primaryStage)
+    {
+        File file = fileChooser.showOpenDialog(primaryStage);
+        load_image_from_file(file.getAbsolutePath());
+        update_edited_image();
+        plot_edited_image();
+    }
+
+    private void update_edited_image()
+    {
+        edited_BI = Frames.edit_BI(curr_BI);
+    }
+
+    private void plot_edited_image()
+    {
+        byte[] buffer_temp = Frames.convert_BI_to_bytes(edited_BI);
         pixelWriter = gc.getPixelWriter();
         pixelFormat = PixelFormat.getByteRgbInstance();
-        pixelWriter.setPixels(0, 0, FRAME_WIDTH, FRAME_HEIGHT, pixelFormat, bt_img, 0, FRAME_WIDTH * 3);
+        pixelWriter.setPixels(0, 0, FRAME_WIDTH, FRAME_HEIGHT, pixelFormat, buffer_temp, 0, FRAME_WIDTH * 3);
     }
 
     private void disp_frame()
@@ -403,7 +485,15 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         pixelWriter = gc.getPixelWriter();
         pixelFormat = PixelFormat.getByteRgbInstance();
         buffer = frames.get_frame();
-        pixelWriter.setPixels(25, 25, FRAME_WIDTH, FRAME_HEIGHT, pixelFormat, buffer, 0, FRAME_WIDTH*3);
+        curr_BI = Frames.convert_to_BI(buffer);
+        update_edited_image();
+        plot_edited_image();
+    }
+
+    private void save_current_view(Stage primaryStage)
+    {
+        File file = fileChooser.showSaveDialog(primaryStage);
+        FileChooserSavingFile.save_current(edited_BI, file);
     }
 
     public void exit_dialog()

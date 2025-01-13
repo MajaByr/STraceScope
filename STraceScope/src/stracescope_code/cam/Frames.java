@@ -8,6 +8,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serial;
 import java.nio.Buffer;
+import java.awt.Color;
+
 
 public class Frames {
     private static final int FRAME_WIDTH  = 640;
@@ -15,13 +17,43 @@ public class Frames {
 
     // monochromatic, negative
     static private boolean[] editing_settings = {false, false, false, false};
+    static private double brightness = 0.5;
+    static private double contrast = 0.5;
+    static private int y_px = (int)FRAME_HEIGHT/2;
+    static private int x_px = (int)FRAME_WIDTH/2;
+    static private double scale = 1.0;
 
     static public native int   open_shm(String shm_name);
     static public native byte[] get_frame();
 
-    int RGB_pixels[];
+    static int RGB_pixels[];
 
-    public BufferedImage bi;
+    public static BufferedImage bi;
+
+    static public void set_scale(double new_s)
+    {
+        scale = new_s;
+    }
+
+    static public void set_brightness(double new_b)
+    {
+        brightness = new_b;
+    }
+
+    static public void set_contrast(double new_c)
+    {
+        contrast = new_c;
+    }
+
+    static public int get_x_px()
+    {
+        return y_px;
+    }
+
+    static public int get_y_px()
+    {
+        return x_px;
+    }
 
     static public void update_edit_settings(boolean[] new_settings)
     {
@@ -29,11 +61,24 @@ public class Frames {
         System.out.println("Updated editing settings: " + editing_settings[0] +", " + editing_settings[1] +", " + editing_settings[2]);
     }
 
+    static private BufferedImage scale_BI(BufferedImage raw)
+    {
+        //obliczenie nowego wymiaru
+        
+    }
+
     static public BufferedImage edit_BI(BufferedImage raw)
     {
-        BufferedImage edited = raw;
+        //BufferedImage edited = raw;
+        BufferedImage edited = new BufferedImage(raw.getWidth(), raw.getHeight(), raw.getType());
+        for (int x = 0; x < raw.getWidth(); x++) {
+            for (int y = 0; y < raw.getHeight(); y++) {
+                edited.setRGB(x, y, raw.getRGB(x, y));
+            }
+        }
 
         if( editing_settings[3] ) return raw;
+
         //One-channel
         if( editing_settings[0] )  edited = monochromatic(edited);
 
@@ -42,6 +87,8 @@ public class Frames {
 
         // Add grid
         if( editing_settings[2] ) edited = add_grid(edited);
+        edited = change_brighness(edited);
+        edited = change_contrast(edited);
 
         return edited;
     }
@@ -130,11 +177,11 @@ public class Frames {
         return edited;
     }
 
-    public BufferedImage convert_to_BI(byte buffer[])
+    static public BufferedImage convert_to_BI(byte buffer[])
     {
         int i, j;
-
         j = 0;
+
         for(i = 0; i < RGB_pixels.length; i++)
         {
             RGB_pixels[i] = (int) (buffer[j] << 16) + (buffer[j+1]<< 8) + buffer[j+2];
@@ -142,7 +189,6 @@ public class Frames {
         }
 
         bi = new BufferedImage(FRAME_WIDTH, FRAME_HEIGHT, BufferedImage.TYPE_INT_RGB);
-
         bi.setRGB(0, 0, FRAME_WIDTH, FRAME_HEIGHT, RGB_pixels, 0, FRAME_WIDTH);
 
         return bi;
@@ -180,5 +226,90 @@ public class Frames {
         }
 
         return buffer;
+    }
+
+    public static BufferedImage change_brighness(BufferedImage image) {
+        if (brightness < 0 || brightness > 1) {
+            throw new IllegalArgumentException("Brightness factor must be between 0 and 1");
+        }
+
+        int width = image.getWidth();
+        int height = image.getHeight();
+
+        // Tworzymy nowy obraz do przechowywania wyniku
+        BufferedImage adjustedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int argb = image.getRGB(x, y);
+
+                // Rozdzielamy na składowe R, G, B
+                int a = (argb >> 24) & 0xFF; // Kanał alfa (przezroczystość)
+                int r = (argb >> 16) & 0xFF;
+                int g = (argb >> 8) & 0xFF;
+                int b = argb & 0xFF;
+
+                // Modyfikujemy jasność każdej składowej
+                r = clamp((int) (r * (brightness / 0.5)), 0, 255);
+                g = clamp((int) (g * (brightness / 0.5)), 0, 255);
+                b = clamp((int) (b * (brightness / 0.5)), 0, 255);
+
+                // Łączymy zmodyfikowane składowe
+                int newArgb = (a << 24) | (r << 16) | (g << 8) | b;
+                adjustedImage.setRGB(x, y, newArgb);
+            }
+        }
+
+        return adjustedImage;
+    }
+
+    public static BufferedImage change_contrast(BufferedImage img) {
+        // Przekształcamy zakres kontrastu na -1 do +1, gdzie 0 oznacza brak zmian
+        double contrastFactor = 2 * (contrast - 0.5);
+
+        // Tworzymy nowy obraz o tych samych wymiarach
+        BufferedImage output = new BufferedImage(img.getWidth(), img.getHeight(), img.getType());
+
+        for (int y = 0; y < img.getHeight(); y++) {
+            for (int x = 0; x < img.getWidth(); x++) {
+                // Pobieramy piksel
+                int argb = img.getRGB(x, y);
+                Color color = new Color(argb, true);
+
+                // Rozdzielamy komponenty koloru
+                int r = color.getRed();
+                int g = color.getGreen();
+                int b = color.getBlue();
+
+                // Zmieniamy kontrast dla każdej składowej
+                r = adjustChannel(r, contrastFactor);
+                g = adjustChannel(g, contrastFactor);
+                b = adjustChannel(b, contrastFactor);
+
+                // Tworzymy nowy kolor i ustawiamy piksel w obrazie wyjściowym
+                Color newColor = new Color(r, g, b, color.getAlpha());
+                output.setRGB(x, y, newColor.getRGB());
+            }
+        }
+
+        return output;
+    }
+
+    private static int adjustChannel(int value, double contrastFactor) {
+        // Normalizacja wartości koloru do zakresu 0-1
+        double normalized = value / 255.0;
+
+        // Przesunięcie do środka (0.5) i zastosowanie kontrastu
+        normalized = 0.5 + (normalized - 0.5) * (1 + contrastFactor);
+
+        // Przycięcie do zakresu 0-1
+        normalized = Math.max(0, Math.min(1, normalized));
+
+        // Skalowanie z powrotem do zakresu 0-255
+        return (int) (normalized * 255);
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.min(Math.max(value, min), max);
     }
 }

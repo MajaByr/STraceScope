@@ -13,15 +13,21 @@ import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.FileChooser.ExtensionFilter;
+import java.io.File;
+
+import javax.imageio.ImageIO;
+
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 
 public class FileChooserSavingFile extends Application {
     @Override
     public void start(Stage stage) {
-        ImageView imgView = new ImageView("UIControls/Save.png");
+        ImageView imgView = new ImageView("file:icons/search.png");
         imgView.setFitWidth(20);
         imgView.setFitHeight(20);
         Menu file = new Menu("File");
-        MenuItem item = new MenuItem("Save", imgView);
+        MenuItem item = new MenuItem("Save");
         file.getItems().addAll(item);
         //Creating a File chooser
         FileChooser fileChooser = new FileChooser();
@@ -42,7 +48,33 @@ public class FileChooserSavingFile extends Application {
         stage.setScene(scene);
         stage.show();
     }
-    public static void main(String args[]){
+    /*public static void main(String args[]){
         launch(args);
+    }*/
+
+    static public void save_current(BufferedImage BI, File file)
+    {
+        String format;
+        String fileName = file.getName();
+        if (fileName.endsWith(".png")) {
+            format = "png";
+        } else if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
+            format = "jpg";
+        } else if (fileName.endsWith(".bmp")) {
+            format = "bmp";
+        } else {
+            // Domyślnie PNG, jeśli użytkownik nie podał rozszerzenia
+            format = "png";
+            file = new File(file.getAbsolutePath() + ".png");
+        }
+
+        try { ImageIO.write(BI, format, file); } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static void select_file()
+    {
+
     }
 }
