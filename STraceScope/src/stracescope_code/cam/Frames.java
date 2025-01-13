@@ -19,8 +19,8 @@ public class Frames {
     static private boolean[] editing_settings = {false, false, false, false};
     static private double brightness = 0.5;
     static private double contrast = 0.5;
-    static private int y_px = (int)FRAME_HEIGHT/2;
-    static private int x_px = (int)FRAME_WIDTH/2;
+    static private int y_c = (int)FRAME_HEIGHT/2;
+    static private int x_c = (int)FRAME_WIDTH/2;
     static private double scale = 1.0;
 
     static public native int   open_shm(String shm_name);
@@ -45,14 +45,24 @@ public class Frames {
         contrast = new_c;
     }
 
-    static public int get_x_px()
+    static public int get_x_c()
     {
-        return y_px;
+        return x_c;
     }
 
-    static public int get_y_px()
+    static public int get_y_c()
     {
-        return x_px;
+        return y_c;
+    }
+
+    static public void increment_scale()
+    {
+        scale++;
+    }
+
+    static public void decrement_scale()
+    {
+        scale--;
     }
 
     static public void update_edit_settings(boolean[] new_settings)
@@ -63,13 +73,32 @@ public class Frames {
 
     static private BufferedImage scale_BI(BufferedImage raw)
     {
-        //obliczenie nowego wymiaru
-        
+        int centerX = FRAME_WIDTH / 2;
+        int centerY = FRAME_HEIGHT / 2;
+        System.out.println("Scale: " + scale);
+
+        BufferedImage scaledImage = new BufferedImage(FRAME_WIDTH, FRAME_HEIGHT, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < FRAME_HEIGHT; y++) {
+            for (int x = 0; x < FRAME_WIDTH; x++) {
+                // Przemieszczamy punkt z nowego obrazu do współrzędnych w oryginalnym obrazie
+                int srcX = (int) (x_c + (x - centerX) / scale);
+                int srcY = (int) (y_c + (y - centerY) / scale);
+
+                // Upewniamy się, że współrzędne źródłowe mieszczą się w obrębie obrazu
+                if (srcX >= 0 && srcX < FRAME_WIDTH && srcY >= 0 && srcY < FRAME_HEIGHT) {
+                    // Pobieramy piksel z oryginalnego obrazu i ustawiamy w nowym obrazie
+                    scaledImage.setRGB(x, y, raw.getRGB(srcX, srcY));
+                }
+            }
+        }
+
+        return scaledImage;
     }
 
     static public BufferedImage edit_BI(BufferedImage raw)
     {
-        //BufferedImage edited = raw;
+        if( editing_settings[3] ) return raw;
+
         BufferedImage edited = new BufferedImage(raw.getWidth(), raw.getHeight(), raw.getType());
         for (int x = 0; x < raw.getWidth(); x++) {
             for (int y = 0; y < raw.getHeight(); y++) {
@@ -77,9 +106,9 @@ public class Frames {
             }
         }
 
-        if( editing_settings[3] ) return raw;
+        if( scale!=1.0 ) edited = scale_BI(edited);
 
-        //One-channel
+            //One-channel
         if( editing_settings[0] )  edited = monochromatic(edited);
 
         //Negative
@@ -98,6 +127,12 @@ public class Frames {
         System.loadLibrary("frames");
         RGB_pixels = new int[FRAME_WIDTH*FRAME_HEIGHT];
     }
+
+    static public void increment_y_c() { y_c+=20; }
+    static public void decrement_y_c() { y_c-=20; }
+    static public void increment_x_c() { x_c+=20; }
+    static public void decrement_x_c() { x_c-=20; }
+    static public double get_scale() { return scale; }
 
     static public BufferedImage monochromatic(BufferedImage raw) //zwraca obraz w trybie jednokanałowym
     {

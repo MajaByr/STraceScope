@@ -36,6 +36,8 @@ import javafx.application.Application;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 
 
 
@@ -220,8 +222,8 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
 
         // Center coordinates
         Label text_center_coords = new Label("Center coordinates [x] [y]: ");
-        coord_x = new Label("<x-value>");
-        coord_y = new Label("<y-value>");
+        coord_x = new Label(Frames.get_x_c() + "");
+        coord_y = new Label(Frames.get_y_c() + "");
         HBox coords_box = new HBox(text_center_coords, coord_x, coord_y);
 
         HBox under_canva = new HBox(preview_button, coords_box);
@@ -279,9 +281,13 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         controlGrid.setPadding(new Insets(10));
 
         Button up_button = new Button("^");
+        up_button.setOnMousePressed(e -> { Frames.decrement_y_c(); refresh(); });
         Button left_button = new Button("<");
+        left_button.setOnMousePressed(e -> { Frames.decrement_x_c(); refresh(); });
         Button right_button = new Button(">");
+        right_button.setOnMousePressed(e -> { Frames.increment_x_c(); refresh(); });
         Button down_button = new Button("v");
+        down_button.setOnMousePressed(e -> { Frames.increment_y_c(); refresh(); });
 
         controlGrid.add(up_button, 1, 0);
         controlGrid.add(left_button, 0, 1);
@@ -316,8 +322,7 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
                     {
                         Frames.set_brightness((double) newValue/100);
                         System.out.println("Brightness changed to: " + (double)newValue/100);
-                        update_edited_image();
-                        plot_edited_image();
+                        refresh();
                     }
                 });
 
@@ -337,8 +342,7 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
                     {
                         Frames.set_contrast((double) newValue/100);
                         System.out.println("Contrast changed to: " + (double)newValue/100);
-                        update_edited_image();
-                        plot_edited_image();
+                        refresh();
                     }
 
                 });
@@ -350,11 +354,32 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
         //-------------------Scale Box--------------------------
         VBox scaleBox = new VBox();
         scaleBox.setSpacing(10);
-        TextField scaleField = new TextField("0,00");
+        TextField scaleField = new TextField("1.00");
         scaleField.setPrefWidth(50);
+        EventHandler<ActionEvent> event = new EventHandler<ActionEvent>() {
+            public void handle(ActionEvent e)
+            {
+                String value = scaleField.getText();
+                Frames.set_scale(Double.parseDouble(value) );
+                refresh();
+            }
+        };
+        scaleField.setOnAction(event);
 
         Button plus_scale = new Button("+");
+        plus_scale.setOnMousePressed(e -> {
+            Frames.increment_scale();
+            scaleField.setText(Frames.get_scale() + "" );
+            refresh();
+        });
+
         Button minus_scale = new Button("-");
+        minus_scale.setOnMousePressed(e -> {
+            Frames.decrement_scale();
+            scaleField.setText(Frames.get_scale() + "" );
+            refresh();
+        });
+
         HBox scaleButtons = new HBox(plus_scale, minus_scale);
         scaleButtons.setSpacing(5);
         scaleBox.getChildren().addAll(new Label("Scale"), scaleField, scaleButtons);
@@ -380,8 +405,7 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
                 }
 
                 Frames.update_edit_settings(editing_settings);
-                update_edited_image();
-                plot_edited_image();
+                refresh();
             }
         });
 
@@ -391,8 +415,7 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
                     //text1.setText("Welcome to Tutorilaspoint");
                     editing_settings[2] = show_grid.isSelected();
                     Frames.update_edit_settings(editing_settings);
-                    update_edited_image();
-                    plot_edited_image();
+                    refresh();
                 });
 
         optionsBox.getChildren().addAll(
@@ -437,9 +460,10 @@ public class JavaFXApp extends Application implements ChangeListener<P_move>
 
     public void refresh()
     {
-        show_file_image(program_path + selected_file);
-        coord_x.setText(Frames.get_x_px() + " ");
-        coord_y.setText(" " + Frames.get_y_px());
+        update_edited_image();
+        plot_edited_image();
+        coord_x.setText(Frames.get_x_c() + " ");
+        coord_y.setText(" " + Frames.get_y_c());
     }
 
     public void item_1()
