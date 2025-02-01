@@ -188,7 +188,7 @@ public class Frames {
 
     static public BufferedImage negative(BufferedImage raw)
     {
-        // Dla każdego piksela z wysokości, szerokości wykonać przekształcenie na kolor przeciwny
+        //change every single pixel
         for (int y = 0; y < FRAME_HEIGHT; y++) {
             for (int x = 0; x < FRAME_WIDTH; x++) {
                 int p = raw.getRGB(x, y); // wartość będąca sumą wszytskich składowych RGB
@@ -298,25 +298,25 @@ public class Frames {
         int width = image.getWidth();
         int height = image.getHeight();
 
-        // Tworzymy nowy obraz do przechowywania wyniku
+        //create new buffer
         BufferedImage adjustedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 int argb = image.getRGB(x, y);
 
-                // Rozdzielamy na składowe R, G, B
-                int a = (argb >> 24) & 0xFF; // Kanał alfa (przezroczystość)
+                //separate RGB
+                int a = (argb >> 24) & 0xFF; //alpha
                 int r = (argb >> 16) & 0xFF;
                 int g = (argb >> 8) & 0xFF;
                 int b = argb & 0xFF;
 
-                // Modyfikujemy jasność każdej składowej
+                //modify rgb values
                 r = clamp((int) (r * (brightness / 0.5)), 0, 255);
                 g = clamp((int) (g * (brightness / 0.5)), 0, 255);
                 b = clamp((int) (b * (brightness / 0.5)), 0, 255);
 
-                // Łączymy zmodyfikowane składowe
+                //store values
                 int newArgb = (a << 24) | (r << 16) | (g << 8) | b;
                 adjustedImage.setRGB(x, y, newArgb);
             }
@@ -326,29 +326,28 @@ public class Frames {
     }
 
     public static BufferedImage change_contrast(BufferedImage img) {
-        // Przekształcamy zakres kontrastu na -1 do +1, gdzie 0 oznacza brak zmian
+        // change to range -1 to +1, 0 is for raw
         double contrastFactor = 2 * (contrast - 0.5);
 
-        // Tworzymy nowy obraz o tych samych wymiarach
+        //new bufferimage
         BufferedImage output = new BufferedImage(img.getWidth(), img.getHeight(), img.getType());
 
         for (int y = 0; y < img.getHeight(); y++) {
             for (int x = 0; x < img.getWidth(); x++) {
-                // Pobieramy piksel
                 int argb = img.getRGB(x, y);
                 Color color = new Color(argb, true);
 
-                // Rozdzielamy komponenty koloru
+                //separate rgb
                 int r = color.getRed();
                 int g = color.getGreen();
                 int b = color.getBlue();
 
-                // Zmieniamy kontrast dla każdej składowej
+                //change contrast for every color
                 r = adjustChannel(r, contrastFactor);
                 g = adjustChannel(g, contrastFactor);
                 b = adjustChannel(b, contrastFactor);
 
-                // Tworzymy nowy kolor i ustawiamy piksel w obrazie wyjściowym
+                //store rgba values
                 Color newColor = new Color(r, g, b, color.getAlpha());
                 output.setRGB(x, y, newColor.getRGB());
             }
@@ -358,16 +357,10 @@ public class Frames {
     }
 
     private static int adjustChannel(int value, double contrastFactor) {
-        // Normalizacja wartości koloru do zakresu 0-1
+        // normalize to range 0-1
         double normalized = value / 255.0;
-
-        // Przesunięcie do środka (0.5) i zastosowanie kontrastu
         normalized = 0.5 + (normalized - 0.5) * (1 + contrastFactor);
-
-        // Przycięcie do zakresu 0-1
         normalized = Math.max(0, Math.min(1, normalized));
-
-        // Skalowanie z powrotem do zakresu 0-255
         return (int) (normalized * 255);
     }
 
